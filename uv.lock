@@ -130,23 +130,23 @@ wheels = [
 [[package]]
 name = "pytest-unmagic-django"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "pytest" },
+    { name = "pytest-django" },
     { name = "pytest-unmagic" },
 ]
 
 [package.optional-dependencies]
 test = [
     { name = "django" },
-    { name = "pytest-django" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "django", marker = "extra == 'test'", specifier = ">=4.2,<6" },
     { name = "pytest" },
-    { name = "pytest-django", marker = "extra == 'test'", specifier = ">=4.12" },
+    { name = "pytest-django", specifier = ">=4.12" },
     { name = "pytest-unmagic" },
 ]
 provides-extras = ["test"]

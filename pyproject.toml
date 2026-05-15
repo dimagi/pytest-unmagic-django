@@ -1,0 +1,28 @@
+[project]
+name = "pytest-unmagic-django"
+version = "0.1.0"
+description = "pytest-django support for pytest-unmagic"
+license = {file = "LICENSE"}
+readme = {file = "README.md", content-type = "text/markdown"}
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Testing",
+]
+dependencies = [
+    "pytest",
+    "pytest-unmagic",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest-django>=4.12",
+    "django>=4.2,<6",
+]

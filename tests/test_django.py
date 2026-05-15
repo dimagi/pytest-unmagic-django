@@ -135,3 +135,38 @@ def test_declared_db_does_not_trip_guard():
     """))
     result = tester.runpytest("-q")
     result.assert_outcomes(passed=1)
+
+
+@use(django_tester)
+def test_session_scoped_db_fixture_does_not_crash_guard():
+    """Guard must not crash when a session-scoped fixture in _DB_FIXTURE_NAMES
+    is being set up.
+
+    Session nodes lack a fixturenames attribute, so accessing it in the guard
+    raises AttributeError. The fix skips the guard for non-item nodes.
+
+    This models the real-world case of pytest-django's live_server fixture,
+    which is session-scoped and is guarded by _DB_FIXTURE_NAMES.
+    """
+    tester = django_tester()
+    tester.makeconftest(textwrap.dedent("""
+        import pytest
+        import unmagic_django
+
+        @pytest.fixture(scope='session')
+        def session_db_server():
+            yield 'server'
+
+        unmagic_django._DB_FIXTURE_NAMES = (
+            unmagic_django._DB_FIXTURE_NAMES | {'session_db_server'}
+        )
+    """))
+    tester.makepyfile(textwrap.dedent("""
+        from unmagic import use
+
+        @use('session_db_server')
+        def test_uses_session_fixture():
+            pass
+    """))
+    result = tester.runpytest("-q")
+    result.assert_outcomes(passed=1)

@@ -69,6 +69,8 @@ def pytest_fixture_setup(fixturedef, request):
     if not request.config.pluginmanager.hasplugin(_PYTEST_DJANGO_PLUGIN_NAME):
         return
     node = request.node
+    if not hasattr(node, "fixturenames"):
+        return
     if fixturedef.argname in node.fixturenames:
         return
     if node.get_closest_marker("django_db") is not None:

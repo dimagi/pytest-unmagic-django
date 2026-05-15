@@ -52,19 +52,22 @@ def test_use_db_via_nested_unmagic_fixture():
 
 
 @use(django_tester)
-def test_inline_db_without_declaration():
-    """Verify pytest-django's native behavior when the 'db' fixture is
-    resolved inline (via UnmagicFixture.create / getfixturevalue) without
-    being declared via @use or a django_db marker.
+def test_inline_db_without_declaration_raises():
+    """The guard raises when 'db' is resolved inline without @use declaration.
 
-    The observed behaviour depends on the database backend. For SQLite
-    :memory: (used here) there is no persistent real database, so lazy
-    db() resolution happens to work. For a real database (e.g.
-    PostgreSQL), the missing declaration means pytest-django's database
-    blocker is still active, leading to an obscure error from inside
-    pytest-django or, in some configurations, access to the real
-    database, and the test passes silently. This means the declaration
-    requirement is not enforced without a guard.
+    Without the guard, pytest-django's behaviour depends on the database
+    backend. For SQLite :memory: (used here) there is no persistent real
+    database, so lazy db() resolution happens to work. For a real database
+    (e.g. PostgreSQL), the missing declaration means pytest-django's
+    database blocker is still active, leading to an obscure error from
+    inside pytest-django or, in some configurations, access to the real
+    database, and the test passes silently.
+
+    The guard catches this consistently across all backends by raising at
+    fixture-setup time before any database access occurs.
+
+    Stdout assertions are used rather than outcome counters because pytest
+    surfaces setup-time failures differently across versions.
     """
     tester = django_tester()
     tester.makepyfile(textwrap.dedent("""
@@ -72,8 +75,6 @@ def test_inline_db_without_declaration():
         from unmagic.fixtures import UnmagicFixture
         from tests.django_app.models import Thing
 
-        # Resolve the pytest-django 'db' fixture from inside the body
-        # without declaring it via @use anywhere in the chain.
         db = UnmagicFixture.create('db')
 
         @fixture
@@ -87,10 +88,36 @@ def test_inline_db_without_declaration():
             print("TEST_BODY_RAN")
             Thing.objects.create(name='x')
     """))
-    result = tester.runpytest("-q", "-s")
-    # pytest-django silently succeeds: both fixture and test body run.
+    result = tester.runpytest("-q")
+    assert result.ret != 0
+    result.stdout.fnmatch_lines([
+        "*RuntimeError*",
+        "*pytest-django fixture 'db'*",
+        "*not declared*",
+    ])
+    result.stdout.no_fnmatch_line("*STEALTH_DB_RAN*")
+    result.stdout.no_fnmatch_line("*TEST_BODY_RAN*")
+
+
+@use(django_tester)
+def test_django_db_marker_bypasses_guard():
+    """A test with @pytest.mark.django_db does not need @use('db')."""
+    tester = django_tester()
+    tester.makepyfile(textwrap.dedent("""
+        import pytest
+        from unmagic.fixtures import UnmagicFixture
+        from tests.django_app.models import Thing
+
+        db = UnmagicFixture.create('db')
+
+        @pytest.mark.django_db
+        def test_marked():
+            db()
+            Thing.objects.create(name='x')
+            assert Thing.objects.count() == 1
+    """))
+    result = tester.runpytest("-q")
     result.assert_outcomes(passed=1)
-    result.stdout.fnmatch_lines(["*STEALTH_DB_RAN*", "*TEST_BODY_RAN*"])
 
 
 @use(django_tester)
